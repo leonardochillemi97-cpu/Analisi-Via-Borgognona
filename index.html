@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="it" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analisi Mercato Turistico - Via Borgognona 47, Roma (2025)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container { height: 400px; }
+        }
+        .nav-active {
+            background-color: #e0f2fe;
+            color: #0284c7;
+            font-weight: 600;
+        }
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+        }
+        @media (max-width: 1023px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+        }
+    </style>
+    <!-- Chosen Palette: Coastal Calm (BG: gray-50, Text: gray-800, Accent: sky-600, Cards: white) -->
+    <!-- Application Structure Plan: L'app è strutturata come un cruscotto interattivo con navigazione laterale (a scomparsa su mobile). Le sezioni sono: 'Cruscotto' (KPI principali e stagionalità), 'Analisi di Mercato' (flussi e offerta), 'Analisi Competitiva' (prezzi e occupazione interattivi per tipologia, SWOT), 'Domanda e Trend' (driver e calendario), 'Strategia' (modelli, target, differenziazione) e 'Piano d'Azione'. Questa struttura a schede tematiche è stata scelta per permettere all'investitore di navigare rapidamente tra i diversi livelli di analisi (dal macro al micro) e di interagire con i dati (es. filtrare per tipologia di immobile), rendendo l'esplorazione più efficiente e mirata rispetto a un report lineare. -->
+    <!-- Visualization & Content Choices:
+       - KPI (Cruscotto): Goal: Informare. Method: Cards HTML/Tailwind. Interaction: None. Justification: Overview rapido.
+       - Stagionalità (Cruscotto): Goal: Mostrare trend. Method: Line Chart (Chart.js). Interaction: Hover. Justification: Immediata visualizzazione picchi/valli.
+       - Provenienza Turisti (Mercato): Goal: Proporzioni. Method: Doughnut Chart (Chart.js). Interaction: Hover. Justification: Chiara divisione Italia/Estero.
+       - Offerta Ricettiva (Mercato): Goal: Confrontare. Method: Bar Chart (Chart.js). Interaction: Hover. Justification: Mostra quota di mercato extra-alberghiero.
+       - Prezzi & Occupazione (Competitiva): Goal: Confrontare/Analizzare. Method: 2 Bar Charts (Chart.js). Interaction: Dropdown select ('propertyTypeSelector') che aggiorna dinamicamente entrambi i grafici. Justification: Consente all'investitore di analizzare redditività e pressione competitiva per la tipologia di immobile specifica di suo interesse.
+       - SWOT, Driver, Strategia, Piano d'Azione: Goal: Organizzare/Informare. Method: Liste e card HTML/Tailwind. Interaction: None. Justification: Contenuti testuali e strategici resi chiari e leggibili.
+       - Calendario (Domanda): Goal: Informare. Method: Tabella HTML/Tailwind. Interaction: None. Justification: Fornisce date azionabili. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-gray-50 text-gray-800 antialiased flex min-h-screen">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebarBackdrop" onclick="toggleSidebar()" class="fixed inset-0 bg-gray-900/50 z-30 hidden lg:hidden"></div>
+
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="sidebar fixed top-0 left-0 z-40 w-64 h-screen bg-white border-r border-gray-200 flex flex-col justify-between lg:translate-x-0">
+        <div>
+            <!-- Sidebar Header -->
+            <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-lg bg-sky-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-sm text-gray-900 leading-tight">Roma Invest 2025</h1>
+                        <p class="text-[11px] text-gray-500 font-medium">Via Borgognona 47</p>
+                    </div>
+                </div>
+                <button onclick="toggleSidebar()" class="lg:hidden text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="p-3 space-y-1 text-xs font-medium">
+                <button onclick="switchSection('sec-cruscotto')" id="nav-cruscotto" class="nav-active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition text-left">
+                    <i class="fa-solid fa-gauge-high w-4 text-center"></i>
+                    <span>1. Cruscotto Investor</span>
+                </button>
+
+                <button onclick="switchSection('sec-mercato')" id="nav-mercato" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition text-left">
+                    <i class="fa-solid fa-earth-europe w-4 text-center"></i>
+                    <span>2. Analisi di Mercato</span>
+                </button>
+
+                <button onclick="switchSection('sec-competitiva')" id="nav-competitiva" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition text-left">
+                    <i class="fa-solid fa-hotel w-4 text-center"></i>
+                    <span>3. Analisi Competitiva</span>
+                </button>
+
+                <button onclick="switchSection('sec-domanda')" id="nav-domanda" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition text-left">
+                    <i class="fa-solid fa-calendar-days w-4 text-center"></i>
+                    <span>4. Domanda & Eventi 2025</span>
+                </button>
+
+                <button onclick="switchSection('sec-strategia')" id="nav-strategia" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition text-left">
+                    <i class="fa-solid fa-chess-knight w-4 text-center"></i>
+                    <span>5. Strategia & Target</span>
+                </button>
+
+                <button onclick="switchSection('sec-piano')" id="nav-piano" class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition text-left">
+                    <i class="fa-solid fa-calculator w-4 text-center"></i>
+                    <span>6. Piano & Calcolatore ROI</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer Info -->
+        <div class="p-4 border-t border-gray-100 bg-sky-50/50 m-3 rounded-xl border">
+            <div class="flex items-center gap-2 text-sky-800 text-[11px] font-bold mb-1">
+                <i class="fa-solid fa-cross"></i>
+                <span>Anno Giubilare 2025</span>
+            </div>
+            <p class="text-[10px] text-gray-500 leading-normal">
+                Focus Micro-Distretto Tridente / Piazza di Spagna. Fonte: EBTL, ISTAT, MINTUR.
+            </p>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="lg:ml-64 flex-1 flex flex-col min-h-screen">
+
+        <!-- Top Sticky Header -->
+        <header class="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-gray-200 px-4 py-3 sm:px-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
+                <div>
+                    <h2 id="headerTitle" class="text-base font-bold text-gray-900">Cruscotto Panoramico Investitore</h2>
+                    <p class="text-xs text-gray-500 hidden sm:block">Analisi di Fattibilità Immobiliare Turistica per l'Anno 2025</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>High Yield Target</span>
+                </span>
+            </div>
+        </header>
+
+        <!-- Main Body Content -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-8">
+
+            <!-- SEZIONE 1: CRUSCOTTO (KPI & STAGIONALITÀ) -->
+            <section id="sec-cruscotto" class="space-y-6">
+                <!-- Intro Paragraph -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-sky-600"></i>
+                        Panoramica Esecutiva & Dinamica Stagionale 2025
+                    </h3>
+                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                        Benvenuto nell'analisi di fattibilità turistico-immobiliare per <strong>Via Borgognona 47</strong>, situata nell'esclusivo distretto del Tridente di Roma. Il 2025 rappresenta un anno straordinario grazie alla concomitanza con il <strong>Giubileo Ordinario</strong>, stimato in oltre 32 milioni di pellegrini aggiuntivi. Questa sezione fornisce la sintesi macro dei volumi e la curva di stagionalità per ottimizzare i tassi d'occupazione e il pricing dinamico.
+                    </p>
+                </div>
+
+                <!-- KPI Cards Grid -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:border-sky-300 transition">
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Arrivi Totali Roma</div>
+                        <div class="text-2xl font-extrabold text-gray-900">22,9M</div>
+                        <div class="text-[11px] text-emerald-600 font-medium mt-1">
+                            <i class="fa-solid fa-arrow-trend-up"></i> +3,4% Anno su Anno
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:border-sky-300 transition">
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Presenze Totali</div>
+                        <div class="text-2xl font-extrabold text-gray-900">52,9M</div>
+                        <div class="text-[11px] text-gray-500 mt-1">Permanenza media: <strong class="text-gray-800">3,74 notti</strong></div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:border-sky-300 transition">
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Stranieri Tridente</div>
+                        <div class="text-2xl font-extrabold text-sky-600">&gt; 85%</div>
+                        <div class="text-[11px] text-gray-500 mt-1">Mercati Premium: USA, UK, UE</div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:border-sky-300 transition">
+                        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">ADR Trilocale Stima</div>
+                        <div class="text-2xl font-extrabold text-emerald-600">€450–€700</div>
+                        <div class="text-[11px] text-gray-500 mt-1">Occupazione media: <strong>~72%</strong></div>
+                    </div>
+                </div>
+
+                <!-- Stagionalità Line Chart -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <h4 class="font-bold text-gray-900 text-base">Andamento Stagionale Presenze Turistiche (%) - Anno 2025</h4>
+                            <p class="text-xs text-gray-500">I 3 picchi principali dell'anno: Maggio (9,6%), Luglio (9,8%) e Ottobre (9,4%) con destagionalizzazione giubilare.</p>
+                        </div>
+                        <span class="text-xs bg-sky-100 text-sky-700 px-3 py-1 rounded-full font-semibold self-start sm:self-auto">Fonte: EBTL 2025</span>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="seasonalityLineChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEZIONE 2: ANALISI DI MERCATO -->
+            <section id="sec-mercato" class="hidden space-y-6">
+                <!-- Intro Paragraph -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-earth-europe text-sky-600"></i>
+                        Analisi dei Flussi di Mercato e Composizione dell'Offerta
+                    </h3>
+                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                        L'area attorno a Via Borgognona 47 ricade nel Municipio I, il cuore pulsante del turismo romano. In questa sezione analizziamo la provenienza dei turisti (con forte predominanza del turismo internazionale ad altissima capacità di spesa) e la struttura dell'offerta ricettiva ricavata tra comparto alberghiero tradizionale ed extra-alberghiero in forte crescita.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Provenienza Turisti (Doughnut Chart) -->
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-gray-900 text-base mb-1">Provenienza Geografica dei Turisti (2025)</h4>
+                            <p class="text-xs text-gray-500 mb-4">Quota italiani vs stranieri e dettaglio mercati top per il Tridente</p>
+                            <div class="chart-container">
+                                <canvas id="originDoughnutChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-3 bg-gray-50 rounded-lg text-xs space-y-2 border border-gray-100">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Top Market Straniero:</span>
+                                <span class="font-bold text-gray-900">Stati Uniti (32% del totale estero)</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Spesa Media Pro-Capite:</span>
+                                <span class="font-bold text-sky-700">Top Premium (&gt; €380/giorno)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Offerta Ricettiva (Bar Chart) -->
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h4 class="font-bold text-gray-900 text-base mb-1">Distribuzione dell'Offerta Ricettiva nel Centro Storico</h4>
+                            <p class="text-xs text-gray-500 mb-4">Numero di strutture censite nel micro-distretto Tridente / Spagna</p>
+                            <div class="chart-container">
+                                <canvas id="supplyBarChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="mt-4 p-3 bg-gray-50 rounded-lg text-xs space-y-2 border border-gray-100">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Dominanza Extra-Alberghiero:</span>
+                                <span class="font-bold text-gray-900">53% dell'offerta ricettiva totale</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Trend Case Vacanza:</span>
+                                <span class="font-bold text-emerald-700">In forte orientamento verso il segmento Luxury</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEZIONE 3: ANALISI COMPETITIVA INTERATTIVA -->
+            <section id="sec-competitiva" class="hidden space-y-6">
+                <!-- Intro Paragraph -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-hotel text-sky-600"></i>
+                        Benchmark Prezzi, Occupazione Mensile & SWOT dei Competitor
+                    </h3>
+                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                        Seleziona la tipologia d'immobile dal menu a tendina per visualizzare l'andamento mese per mese dell'anno 2025. Il grafico integrato mostra contemporaneamente il Prezzo Medio Notturno (ADR in €) e il Tasso di Occupazione (%), permettendoti di identificare i picchi di redditività e pianificare le leve tariffarie dinamiche.
+                    </p>
+                </div>
+
+                <!-- Dropdown Selector per Filtro Tipologia Immobile -->
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <label for="propertyTypeSelector" class="font-bold text-gray-900 text-xs sm:text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-sky-600"></i>
+                        <span>Tipologia Immobile (Grafico Mensile ADR & Occupazione):</span>
+                    </label>
+                    <select id="propertyTypeSelector" onchange="updateCompetitiveCharts(this.value)" class="w-full sm:w-80 text-xs p-2.5 rounded-lg border border-gray-300 bg-gray-50 font-semibold text-gray-800 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                        <option value="monolocale">Monolocale (Studio)</option>
+                        <option value="bilocale" selected>Bilocale (1 Camera + Soggiorno)</option>
+                        <option value="trilocale">Trilocale (2 Suite + Soggiorno)</option>
+                        <option value="quadrilocale">Quadrilocale / Attico Luxury</option>
+                        <option value="casa_giardino">Casa con Giardino / Dimora Storica</option>
+                    </select>
+                </div>
+
+                <!-- Monthly ADR & Occupancy Dual-Axis Chart -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h4 id="monthlyChartTitle" class="font-bold text-gray-900 text-base">Andamento Mensile 2025: Bilocale</h4>
+                            <p class="text-xs text-gray-500">Confronto mese per mese tra Prezzo Medio Notturno (ADR €) e Tasso di Occupazione (%)</p>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs font-semibold">
+                            <span class="flex items-center gap-1.5 text-sky-700">
+                                <span class="w-3 h-3 rounded bg-sky-600 inline-block"></span>
+                                <span>ADR (€/notte)</span>
+                            </span>
+                            <span class="flex items-center gap-1.5 text-emerald-700">
+                                <span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span>
+                                <span>Occupazione (%)</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="compMonthlyDualChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- SWOT Analysis Competitor -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h4 class="font-bold text-emerald-800 text-sm mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                            Punti di Forza dei Competitor in Via Borgognona
+                        </h4>
+                        <ul class="space-y-2 text-xs text-gray-600">
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-check text-emerald-500 mt-0.5"></i>
+                                <span><strong>Posizione Unica:</strong> Walking score 100/100 tra Via dei Condotti e Piazza di Spagna.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-check text-emerald-500 mt-0.5"></i>
+                                <span><strong>Palazzi d'Epoca:</strong> Immobile dal forte fascino architettonico e soffitti a cassettoni.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-check text-emerald-500 mt-0.5"></i>
+                                <span><strong>Alto Tasso di Conversione:</strong> L'indirizzo attrae automaticamente prenotazioni senza sforzo di brand.</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h4 class="font-bold text-rose-800 text-sm mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
+                            Debolezze dei Competitor (Opportunità di Attacco)
+                        </h4>
+                        <ul class="space-y-2 text-xs text-gray-600">
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-xmark text-rose-500 mt-0.5"></i>
+                                <span><strong>Isolamento Acustico Carente:</strong> Molti immobili soffrono il rumore di strada per serramenti vecchi.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-xmark text-rose-500 mt-0.5"></i>
+                                <span><strong>Accoglienza Impersonale:</strong> Self check-in senza assistenza concierge per ospiti VIP.</span>
+                            </li>
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-xmark text-rose-500 mt-0.5"></i>
+                                <span><strong>Mancanza Deposito Bagagli:</strong> Assenza di soluzioni per gestire arrivi anticipati o partenze tarde.</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEZIONE 4: DOMANDA, TREND & CALENDARIO -->
+            <section id="sec-domanda" class="hidden space-y-6">
+                <!-- Intro Paragraph -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days text-sky-600"></i>
+                        Driver della Domanda, Trend Emergenti & Calendario Opportunità 2025
+                    </h3>
+                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                        I turisti scelgono Via Borgognona primariamente per il <strong>Luxury Shopping & LifeStyle</strong> (45%) e per la prossimità ai monumenti storici. Di seguito vengono riportate le date clou dell'anno 2025 in cui applicare restrizioni di minimo soggiorno e sovrapprezzi tariffari fino al +75%.
+                    </p>
+                </div>
+
+                <!-- Driver & Recensioni -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="text-sky-600 font-bold text-sm mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                            <span>Motivazioni di Soggiorno</span>
+                        </div>
+                        <ul class="text-xs text-gray-600 space-y-1.5">
+                            <li>• Shopping High-End Moda & Gioielli (45%)</li>
+                            <li>• Cultura, Arte & Giubileo 2025 (35%)</li>
+                            <li>• Enogastronomia Stellata (12%)</li>
+                            <li>• Business & Luxury Remote Work (8%)</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="text-emerald-600 font-bold text-sm mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-star"></i>
+                            <span>Analisi Recensioni Medie</span>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed mb-2">
+                            Punteggio medio dell'area: <strong>8.9/10</strong>.
+                        </p>
+                        <p class="text-[11px] text-gray-500">
+                            <strong>Apprezzati:</strong> Posizione imbattibile, fascino del palazzo, pulizia.<br>
+                            <strong>Criticità:</strong> Rumore notturno, aria condizionata rumorosa, manovra bagagli.
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <div class="text-amber-600 font-bold text-sm mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-trend-up"></i>
+                            <span>Trend Emergenti 2025</span>
+                        </div>
+                        <ul class="text-xs text-gray-600 space-y-1.5">
+                            <li>• Workation da remoto per dirigenti esteri</li>
+                            <li>• Richiesta di private chef in appartamento</li>
+                            <li>• Boom di turisti USA e dal Medio Oriente</li>
+                            <li>• Aumento della permanenza (+0.3 notti)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Table Date Clou 2025 -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 class="font-bold text-gray-900 text-base mb-3">Calendario Opportunità e Pricing Strategico 2025</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-700 font-bold border-b border-gray-200">
+                                    <th class="p-3">Periodo / Date 2025</th>
+                                    <th class="p-3">Evento & Driver di Domanda</th>
+                                    <th class="p-3">Aumento Tariffario Suggerito</th>
+                                    <th class="p-3">Min. Stay</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 text-gray-700">
+                                <tr class="hover:bg-sky-50/50">
+                                    <td class="p-3 font-semibold text-gray-900">24 Dic 2024 – 6 Gen 2025</td>
+                                    <td class="p-3">Apertura Porta Santa & Festività Capodanno</td>
+                                    <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">+50% su ADR Base</span></td>
+                                    <td class="p-3">3 Notti</td>
+                                </tr>
+                                <tr class="hover:bg-sky-50/50">
+                                    <td class="p-3 font-semibold text-gray-900">18 – 21 Aprile 2025</td>
+                                    <td class="p-3">Pasqua e Lunedì dell'Angelo</td>
+                                    <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">+60% su ADR Base</span></td>
+                                    <td class="p-3">3 Notti</td>
+                                </tr>
+                                <tr class="hover:bg-sky-50/50">
+                                    <td class="p-3 font-semibold text-gray-900">7 – 18 Maggio 2025</td>
+                                    <td class="p-3">Internazionali BNL d'Italia di Tennis</td>
+                                    <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">+70% (Corporate/VIP)</span></td>
+                                    <td class="p-3">4 Notti</td>
+                                </tr>
+                                <tr class="hover:bg-sky-50/50">
+                                    <td class="p-3 font-semibold text-gray-900">28 Luglio – 3 Agosto</td>
+                                    <td class="p-3">Giubileo dei Giovani (Evento Clou Estivo)</td>
+                                    <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">+65% (Saturazione Centro)</span></td>
+                                    <td class="p-3">4 Notti</td>
+                                </tr>
+                                <tr class="hover:bg-sky-50/50">
+                                    <td class="p-3 font-semibold text-gray-900">24 Dic 2025 – 6 Gen 2026</td>
+                                    <td class="p-3">Chiusura Anno Santo & Festività Natalizie</td>
+                                    <td class="p-3"><span class="bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded">+75% (Picco Max)</span></td>
+                                    <td class="p-3">4 Notti</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEZIONE 5: STRATEGIA D'INVESTIMENTO & TARGET -->
+            <section id="sec-strategia" class="hidden space-y-6">
+                <!-- Intro Paragraph -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-chess-knight text-sky-600"></i>
+                        Analisi Strategica delle 3 Modalità d'Ingresso & Target
+                    </h3>
+                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                        Confronto analitico tra le tre strategie operative per l'investitore (<strong>Subaffitto / Rent-to-Rent</strong>, <strong>Property Management</strong> e <strong>Acquisto / Buy-to-Let</strong>) con identificazione del target d'elezione e delle leve di differenziazione.
+                    </p>
+                </div>
+
+                <!-- Comparison Matrix Table -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 class="font-bold text-gray-900 text-base mb-4">Matrice Comparativa delle Opzioni di Investimento</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-sky-50 text-sky-900 font-bold border-b border-sky-200">
+                                    <th class="p-3">Parametro Strategico</th>
+                                    <th class="p-3">Rent-to-Rent (Subaffitto)</th>
+                                    <th class="p-3">Property Management</th>
+                                    <th class="p-3">Buy-to-Let (Acquisto)</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 text-gray-700">
+                                <tr>
+                                    <td class="p-3 font-semibold text-gray-900">Capitale Iniziale Required</td>
+                                    <td class="p-3 font-bold text-sky-700">€20.000 – €50.000</td>
+                                    <td class="p-3 text-emerald-700 font-bold">€0 – €5.000</td>
+                                    <td class="p-3 font-bold text-gray-900">€1,5M – €2,5M (€15k-27k/m²)</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-semibold text-gray-900">Rischio Fisso Mensile</td>
+                                    <td class="p-3 text-rose-700 font-semibold">Alto (Canone fisso €3k-5k)</td>
+                                    <td class="p-3 text-emerald-700 font-semibold">Nullo (Solo commissione)</td>
+                                    <td class="p-3 text-sky-700 font-semibold">Basso (Patrimoniale reale)</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-semibold text-gray-900">Margine Netto Indicativo</td>
+                                    <td class="p-3 font-bold text-emerald-700">High ROI su capitale</td>
+                                    <td class="p-3 font-semibold">18% – 25% sul Lordo</td>
+                                    <td class="p-3 font-semibold">Cap Rate Netto: 3,8% – 4,8%</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 font-semibold text-gray-900">Consigliato Per:</td>
+                                    <td class="p-3">Gestori dinamici con cash flow</td>
+                                    <td class="p-3">Agenzie e Property Manager</td>
+                                    <td class="p-3">Conservazione capitale HNWI</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Target & Boutique Hotelisation & Mix Donut -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-2">
+                        <div class="text-sky-600 font-bold text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-bullseye"></i>
+                            <span>Target Ideale & Immobile</span>
+                        </div>
+                        <p class="text-xs text-gray-600 leading-relaxed">
+                            <strong>Target Primario:</strong> Famiglie e coppie HNWI ad altissima spesa (USA, Golfo, UE).<br>
+                            <strong>Taglio Perfetto:</strong> Trilocale di 85–110 m² configurato con 2 Suite Matrimoniali e doppio bagno privato en-suite.
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-2">
+                        <div class="text-sky-600 font-bold text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-crown"></i>
+                            <span>"Boutique Hotelisation"</span>
+                        </div>
+                        <ul class="text-xs text-gray-600 space-y-1">
+                            <li>• Serramenti acustici 45dB antirumore</li>
+                            <li>• Servizio Concierge & Private Transfer</li>
+                            <li>• Convenzione deposito bagagli h24</li>
+                            <li>• Smart Check-in con tessere digitali</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h5 class="font-bold text-gray-900 text-xs mb-1">Mix Canali di Acquisizione Clienti</h5>
+                            <div class="chart-container" style="height: 160px;">
+                                <canvas id="channelMixChart"></canvas>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-gray-500 text-center mt-1">65% OTA • 20% Direct • 15% Travel Designers</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SEZIONE 6: PIANO D'AZIONE & CALCOLATORE ROI -->
+            <section id="sec-piano" class="hidden space-y-6">
+                <!-- Intro Paragraph -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-calculator text-sky-600"></i>
+                        Piano d'Azione Operativo & Calcolatore Finanziario Interattivo
+                    </h3>
+                    <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                        Di seguito trovi la roadmap d'ingresso in 5 mosse con il quadro fiscale e normativo 2025 (CIN, CIR, Cedolare Secca) e il <strong>Simulatore Finanziario Dinamico</strong> per calcolare i tuoi ritorni sull'investimento in Via Borgognona 47.
+                    </p>
+                </div>
+
+                <!-- Roadmap 5 Mosse -->
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-sky-600 block mb-1">MOSSA 1</span>
+                        <h5 class="font-bold text-gray-900 text-xs mb-1">Compliance Legal</h5>
+                        <p class="text-[11px] text-gray-500 leading-tight">Ottenimento CIN, CIR e SCIA SUAR Roma entro il 2025.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-sky-600 block mb-1">MOSSA 2</span>
+                        <h5 class="font-bold text-gray-900 text-xs mb-1">Fit-Out Luxury</h5>
+                        <p class="text-[11px] text-gray-500 leading-tight">Insonorizzazione acustica, Smart Lock e Home Staging high-end.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-sky-600 block mb-1">MOSSA 3</span>
+                        <h5 class="font-bold text-gray-900 text-xs mb-1">Tech Stack Dynamic</h5>
+                        <p class="text-[11px] text-gray-500 leading-tight">PMS + PriceLabs integrato sulle date del Giubileo 2025.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-sky-600 block mb-1">MOSSA 4</span>
+                        <h5 class="font-bold text-gray-900 text-xs mb-1">SOP Operative</h5>
+                        <p class="text-[11px] text-gray-500 leading-tight">Team di pulizia boutique, lavanderia e partnership luggage.</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-sky-600 block mb-1">MOSSA 5</span>
+                        <h5 class="font-bold text-gray-900 text-xs mb-1">Lancio Multicanale</h5>
+                        <p class="text-[11px] text-gray-500 leading-tight">Shooting foto professionale, OTA e canale diretto.</p>
+                    </div>
+                </div>
+
+                <!-- Quadro Fiscale & Normativo -->
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                    <h4 class="font-bold text-gray-900 text-sm mb-3">Normativa & Fisco 2025 (Sintesi)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <span class="font-bold text-gray-900 block">Cedolare Secca:</span>
+                            <span class="text-gray-600">21% sul 1° immobile; 26% dal 2° al 4° immobile.</span>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <span class="font-bold text-gray-900 block">CIN (Codice Identificativo):</span>
+                            <span class="text-gray-600">Obbligatorio su tutti gli annunci dal 1° Gennaio 2025.</span>
+                        </div>
+                        <div class="p-3 bg-gray-50 rounded-lg">
+                            <span class="font-bold text-gray-900 block">Tassa Soggiorno Roma:</span>
+                            <span class="text-gray-600">€6,00 per persona/notte (max 10 notti consecutive).</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulatore Finanziario ROI -->
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-6">
+                    <h4 class="font-bold text-gray-900 text-base border-b border-gray-100 pb-2">Simulatore Finanziario Personalizzato</h4>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- Input Controls -->
+                        <div class="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Modello di Gestione</label>
+                                <select id="calcModel" onchange="calculateROI()" class="w-full text-xs p-2.5 rounded-lg border border-gray-300 bg-white font-semibold">
+                                    <option value="buy" selected>Buy-to-Let (Acquisto)</option>
+                                    <option value="rent">Rent-to-Rent (Subaffitto)</option>
+                                    <option value="pm">Property Management (20%)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-gray-700 mb-1">
+                                    <span>Prezzo Notte (ADR):</span>
+                                    <span id="valAdr" class="text-sky-700 font-bold">€550</span>
+                                </div>
+                                <input type="range" id="inputAdr" min="200" max="1200" step="10" value="550" oninput="calculateROI()" class="w-full accent-sky-600">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-gray-700 mb-1">
+                                    <span>Tasso Occupazione:</span>
+                                    <span id="valOcc" class="text-sky-700 font-bold">72%</span>
+                                </div>
+                                <input type="range" id="inputOcc" min="40" max="95" step="1" value="72" oninput="calculateROI()" class="w-full accent-sky-600">
+                            </div>
+
+                            <div id="wrapperCostRent" class="hidden">
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Canone Locazione Mensile (€)</label>
+                                <input type="number" id="inputRentCost" value="4000" oninput="calculateROI()" class="w-full text-xs p-2 border border-gray-300 rounded-lg">
+                            </div>
+
+                            <div id="wrapperCostBuy">
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Valore Acquisto Immobile (€)</label>
+                                <input type="number" id="inputBuyCost" value="1800000" oninput="calculateROI()" class="w-full text-xs p-2 border border-gray-300 rounded-lg">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Cedolare Secca</label>
+                                <select id="calcTax" onchange="calculateROI()" class="w-full text-xs p-2 rounded-lg border border-gray-300 bg-white">
+                                    <option value="0.21" selected>21% (1° Immobile)</option>
+                                    <option value="0.26">26% (dal 2° Immobile)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Results & Graph -->
+                        <div class="lg:col-span-2 flex flex-col justify-between space-y-4">
+                            <div class="grid grid-cols-3 gap-3 text-center">
+                                <div class="bg-gray-50 p-3 rounded-xl border border-gray-200">
+                                    <span class="text-[10px] font-bold text-gray-500 block">RICAVO LORDO ANNUO</span>
+                                    <span id="resRevenue" class="text-lg font-extrabold text-gray-900">€144.540</span>
+                                </div>
+                                <div class="bg-rose-50 p-3 rounded-xl border border-rose-200">
+                                    <span class="text-[10px] font-bold text-rose-600 block">COSTI & FISCO</span>
+                                    <span id="resExpenses" class="text-lg font-extrabold text-rose-700">€58.200</span>
+                                </div>
+                                <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200">
+                                    <span class="text-[10px] font-bold text-emerald-700 block">UTILE NETTO (NOI)</span>
+                                    <span id="resNetIncome" class="text-xl font-black text-emerald-700">€86.340</span>
+                                </div>
+                            </div>
+
+                            <div class="chart-container" style="height: 200px;">
+                                <canvas id="calcRoiChart"></canvas>
+                            </div>
+
+                            <div class="p-3 bg-sky-50 rounded-xl border border-sky-200 flex justify-between items-center text-xs">
+                                <div>
+                                    <span id="lblMetricName" class="font-bold text-sky-900 block">CAP RATE NETTO:</span>
+                                    <span class="text-gray-500 text-[11px]">Rendimento sul capitale netto investito</span>
+                                </div>
+                                <span id="resMetricValue" class="text-xl font-extrabold text-sky-700">4,80%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white border-t border-gray-200 py-4 px-6 text-center text-xs text-gray-500 mt-auto">
+            <p>Studio immobiliare turistico • Via Borgognona 47, Roma • Anno Giubilare 2025</p>
+        </footer>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Global Chart Instances
+        let seasonalityChartInst = null;
+        let originChartInst = null;
+        let supplyChartInst = null;
+        let compAdrChartInst = null;
+        let compOccChartInst = null;
+        let channelMixChartInst = null;
+        let calcRoiChartInst = null;
+
+        // Toggle Mobile Sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            sidebar.classList.toggle('open');
+            backdrop.classList.toggle('hidden');
+        }
+
+        // Switch Main Sections
+        function switchSection(secId) {
+            // Hide all sections
+            const sections = ['sec-cruscotto', 'sec-mercato', 'sec-competitiva', 'sec-domanda', 'sec-strategia', 'sec-piano'];
+            sections.forEach(s => document.getElementById(s).classList.add('hidden'));
+
+            // Update Nav Active Style
+            const navs = ['nav-cruscotto', 'nav-mercato', 'nav-competitiva', 'nav-domanda', 'nav-strategia', 'nav-piano'];
+            navs.forEach(n => {
+                const btn = document.getElementById(n);
+                btn.classList.remove('nav-active');
+                btn.classList.add('text-gray-600');
+            });
+
+            // Show Target Section
+            document.getElementById(secId).classList.remove('hidden');
+            const activeBtn = document.getElementById('nav-' + secId.replace('sec-', ''));
+            activeBtn.classList.add('nav-active');
+            activeBtn.classList.remove('text-gray-600');
+
+            // Update Header Title
+            const titles = {
+                'sec-cruscotto': 'Cruscotto Panoramico Investitore',
+                'sec-mercato': 'Analisi di Mercato & Flussi Turistici',
+                'sec-competitiva': 'Analisi Competitiva Interattiva',
+                'sec-domanda': 'Domanda, Trend & Calendario Date 2025',
+                'sec-strategia': 'Modelli Strategici & Target Profiling',
+                'sec-piano': "Piano d'Azione & Calcolatore ROI"
+            };
+            document.getElementById('headerTitle').innerText = titles[secId] || 'Analisi Immobiliare 2025';
+
+            // Close Mobile Sidebar if open
+            if (window.innerWidth < 1024) {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar.classList.contains('open')) toggleSidebar();
+            }
+
+            // Render Charts on visibility
+            if (secId === 'sec-cruscotto') renderSeasonalityChart();
+            if (secId === 'sec-mercato') renderMarketCharts();
+            if (secId === 'sec-competitiva') updateCompetitiveCharts(document.getElementById('propertyTypeSelector').value);
+            if (secId === 'sec-strategia') renderStrategyChart();
+            if (secId === 'sec-piano') calculateROI();
+        }
+
+        // 1. Render Seasonality Line Chart
+        function renderSeasonalityChart() {
+            if (seasonalityChartInst) seasonalityChartInst.destroy();
+            const ctx = document.getElementById('seasonalityLineChart').getContext('2d');
+            seasonalityChartInst = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'],
+                    datasets: [{
+                        label: 'Quota Presenze Annuali (%)',
+                        data: [6.5, 6.6, 8.3, 9.3, 9.6, 9.3, 9.8, 7.4, 8.3, 9.4, 7.6, 8.0],
+                        borderColor: '#0284c7',
+                        backgroundColor: 'rgba(2, 132, 199, 0.1)',
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#0284c7',
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { ticks: { callback: v => v + '%' } } }
+                }
+            });
+        }
+
+        // 2. Render Market Charts (Doughnut & Bar)
+        function renderMarketCharts() {
+            if (originChartInst) originChartInst.destroy();
+            if (supplyChartInst) supplyChartInst.destroy();
+
+            // Doughnut Provenienza
+            const ctxOrigin = document.getElementById('originDoughnutChart').getContext('2d');
+            originChartInst = new Chart(ctxOrigin, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Stranieri (78,9%)', 'Italiani (21,1%)'],
+                    datasets: [{
+                        data: [78.9, 21.1],
+                        backgroundColor: ['#0284c7', '#e2e8f0'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Bar Supply
+            const ctxSupply = document.getElementById('supplyBarChart').getContext('2d');
+            supplyChartInst = new Chart(ctxSupply, {
+                type: 'bar',
+                data: {
+                    labels: ['Case Vacanza', 'B&B / Affittacamere', 'Hotel 3-4★', 'Hotel 5★ Luxury'],
+                    datasets: [{
+                        label: 'Strutture Stimate nel Tridente',
+                        data: [1250, 420, 180, 65],
+                        backgroundColor: '#0284c7',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // 3. Update Interactive Competitive Monthly Dual-Axis Chart
+        function updateCompetitiveCharts(type) {
+            if (compAdrChartInst) compAdrChartInst.destroy();
+
+            const monthlyDataMap = {
+                'monolocale': {
+                    name: 'Monolocale (Studio)',
+                    adr: [210, 220, 280, 350, 380, 360, 390, 290, 340, 380, 260, 340],
+                    occ: [68, 70, 78, 86, 88, 85, 89, 72, 80, 87, 73, 78]
+                },
+                'bilocale': {
+                    name: 'Bilocale (1 Camera + Soggiorno)',
+                    adr: [280, 290, 380, 460, 500, 480, 520, 380, 450, 500, 340, 460],
+                    occ: [65, 67, 76, 84, 86, 82, 86, 70, 78, 85, 71, 76]
+                },
+                'trilocale': {
+                    name: 'Trilocale (2 Suite + Soggiorno)',
+                    adr: [420, 440, 580, 690, 750, 720, 780, 580, 680, 750, 500, 680],
+                    occ: [62, 64, 74, 82, 84, 80, 84, 68, 76, 83, 68, 74]
+                },
+                'quadrilocale': {
+                    name: 'Quadrilocale / Attico Luxury',
+                    adr: [700, 730, 950, 1150, 1300, 1200, 1350, 980, 1150, 1280, 820, 1100],
+                    occ: [58, 60, 70, 78, 80, 76, 80, 64, 72, 79, 64, 70]
+                },
+                'casa_giardino': {
+                    name: 'Casa / Dimora con Giardino',
+                    adr: [1200, 1250, 1600, 2100, 2400, 2300, 2600, 2100, 2200, 2350, 1400, 1950],
+                    occ: [52, 55, 65, 74, 78, 75, 82, 70, 72, 76, 58, 66]
+                }
+            };
+
+            const selected = monthlyDataMap[type] || monthlyDataMap['bilocale'];
+            document.getElementById('monthlyChartTitle').innerText = 'Andamento Mensile 2025: ' + selected.name;
+
+            const ctx = document.getElementById('compMonthlyDualChart').getContext('2d');
+            compAdrChartInst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'],
+                    datasets: [
+                        {
+                            label: 'ADR (€/notte)',
+                            data: selected.adr,
+                            backgroundColor: 'rgba(2, 132, 199, 0.85)',
+                            borderColor: '#0284c7',
+                            borderWidth: 1,
+                            borderRadius: 4,
+                            yAxisID: 'yAdr',
+                            order: 2
+                        },
+                        {
+                            label: 'Occupazione (%)',
+                            data: selected.occ,
+                            type: 'line',
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#10b981',
+                            pointRadius: 4,
+                            tension: 0.3,
+                            fill: true,
+                            yAxisID: 'yOcc',
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.dataset.yAxisID === 'yAdr') {
+                                        return 'ADR Medio: €' + context.raw;
+                                    } else {
+                                        return 'Tasso Occupazione: ' + context.raw + '%';
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        yAdr: {
+                            type: 'linear',
+                            position: 'left',
+                            title: { display: true, text: 'ADR (€)', font: { size: 11, weight: 'bold' } },
+                            ticks: { callback: v => '€' + v }
+                        },
+                        yOcc: {
+                            type: 'linear',
+                            position: 'right',
+                            min: 0,
+                            max: 100,
+                            title: { display: true, text: 'Occupazione (%)', font: { size: 11, weight: 'bold' } },
+                            grid: { drawOnChartArea: false },
+                            ticks: { callback: v => v + '%' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. Render Strategy Channel Donut
+        function renderStrategyChart() {
+            if (channelMixChartInst) channelMixChartInst.destroy();
+            const ctx = document.getElementById('channelMixChart').getContext('2d');
+            channelMixChartInst = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['OTA (65%)', 'Sito Diretto (20%)', 'Travel Designers (15%)'],
+                    datasets: [{
+                        data: [65, 20, 15],
+                        backgroundColor: ['#0284c7', '#0f172a', '#d97706'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // 5. Dynamic Financial Calculator (Tab 6)
+        function calculateROI() {
+            const model = document.getElementById('calcModel').value;
+            const adr = parseFloat(document.getElementById('inputAdr').value);
+            const occ = parseFloat(document.getElementById('inputOcc').value) / 100;
+            const taxRate = parseFloat(document.getElementById('calcTax').value);
+
+            document.getElementById('valAdr').innerText = '€' + adr;
+            document.getElementById('valOcc').innerText = Math.round(occ * 100) + '%';
+
+            // Show/Hide Inputs
+            if (model === 'rent') {
+                document.getElementById('wrapperCostRent').classList.remove('hidden');
+                document.getElementById('wrapperCostBuy').classList.add('hidden');
+            } else if (model === 'buy') {
+                document.getElementById('wrapperCostRent').classList.add('hidden');
+                document.getElementById('wrapperCostBuy').classList.remove('hidden');
+            } else {
+                document.getElementById('wrapperCostRent').classList.add('hidden');
+                document.getElementById('wrapperCostBuy').classList.add('hidden');
+            }
+
+            const totalNights = 365 * occ;
+            const grossRevenue = Math.round(totalNights * adr);
+
+            let expenses = 0;
+            let netIncome = 0;
+            let metricText = '';
+            let metricVal = '';
+
+            const otaComm = grossRevenue * 0.155;
+            const cleaningAndOps = totalNights * 45;
+
+            if (model === 'rent') {
+                const rentCostAnnual = parseFloat(document.getElementById('inputRentCost').value) * 12;
+                const taxes = grossRevenue * taxRate;
+                expenses = Math.round(rentCostAnnual + otaComm + cleaningAndOps + taxes);
+                netIncome = grossRevenue - expenses;
+
+                const roi = ((netIncome / 35000) * 100).toFixed(1);
+                metricText = 'ROI SU CAPITALE INIZIALE:';
+                metricVal = roi + '%';
+
+            } else if (model === 'pm') {
+                const pmFee = grossRevenue * 0.20;
+                expenses = Math.round(pmFee * 0.35); // ops expense for agency
+                netIncome = Math.round(pmFee - expenses);
+                metricText = 'MARGINAZIONE AGENZIA PM:';
+                metricVal = '€' + netIncome.toLocaleString('it-IT');
+
+            } else { // Buy
+                const buyPrice = parseFloat(document.getElementById('inputBuyCost').value);
+                const taxes = grossRevenue * taxRate;
+                expenses = Math.round(otaComm + cleaningAndOps + taxes + 6000);
+                netIncome = grossRevenue - expenses;
+
+                const netCapRate = ((netIncome / buyPrice) * 100).toFixed(2);
+                metricText = 'CAP RATE NETTO SU IMMOBILE:';
+                metricVal = netCapRate + '%';
+            }
+
+            document.getElementById('resRevenue').innerText = '€' + grossRevenue.toLocaleString('it-IT');
+            document.getElementById('resExpenses').innerText = '€' + expenses.toLocaleString('it-IT');
+            document.getElementById('resNetIncome').innerText = '€' + netIncome.toLocaleString('it-IT');
+            document.getElementById('lblMetricName').innerText = metricText;
+            document.getElementById('resMetricValue').innerText = metricVal;
+
+            // Render ROI Chart
+            if (calcRoiChartInst) calcRoiChartInst.destroy();
+            const ctx = document.getElementById('calcRoiChart').getContext('2d');
+            calcRoiChartInst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Ricavo Lordo', 'Spese & Fisco', 'Utile Netto (NOI)'],
+                    datasets: [{
+                        data: [grossRevenue, expenses, netIncome],
+                        backgroundColor: ['#0f172a', '#e11d48', '#059669'],
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { ticks: { callback: v => '€' + v.toLocaleString('it-IT') } } }
+                }
+            });
+        }
+
+        // Initialize First Section Chart on Page Load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderSeasonalityChart();
+        });
+    </script>
+</body>
+</html>
